@@ -112,9 +112,9 @@ func (*GoDagger) buildBinary(goVersion string, dir *dagger.Directory, platform s
 
 // Test runs the Go tests
 func (*GoDagger) Tests(ctx context.Context,
-	// source is the directory containing the Go source code
+	// dir is the directory containing the Go source code
 	// +required
-	source *Directory,
+	dir *Directory,
 	// goVersion is the version of Go to use for building the binary
 	// +optional
 	// +default="1.22.0"
@@ -122,7 +122,7 @@ func (*GoDagger) Tests(ctx context.Context,
 ) (string, error) {
 	return dag.Container().
 		From("golang:"+goVersion).
-		WithDirectory("/src", source).
+		WithDirectory("/src", dir).
 		WithWorkdir("/src").
 		WithExec([]string{"go", "test", "-v", "--count=1", "./..."}).
 		Stdout(ctx)

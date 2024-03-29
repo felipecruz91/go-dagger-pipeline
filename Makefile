@@ -2,7 +2,7 @@ build-image:
 	dagger call build-image --dir .
 
 tests:
-	dagger call tests --source .
+	dagger call tests --dir .
 
 build-all:
 	dagger call build-all --dir . --platforms "linux/amd64,linux/arm64,darwin/arm64" -o ./bin
