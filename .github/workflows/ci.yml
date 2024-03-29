@@ -41,4 +41,4 @@ jobs:
           version: $DAGGER_VERSION
           verb: call
           module: github.com/${{ github.repository }}@${{ github.ref }}
-          args: build-image --dir . --platform "linux/arm64" stdout
+          args: build-image --dir . --platform "linux/arm64"
