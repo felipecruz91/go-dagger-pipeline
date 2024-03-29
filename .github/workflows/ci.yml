@@ -14,39 +14,39 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Build binaries
+      - name: CI
         uses: dagger/dagger-for-github@v5
         with:
           version: $DAGGER_VERSION
           verb: call
           module: github.com/${{ github.repository }}@${{ github.ref }}
-          args: build-all --dir . --platforms "linux/amd64,linux/arm64" -o bin
+          args: ci --source .
 
-      - name: Go tests
-        uses: dagger/dagger-for-github@v5
-        with:
-          version: $DAGGER_VERSION
-          verb: call
-          module: github.com/${{ github.repository }}@${{ github.ref }}
-          args: tests --dir .
-
-      # - uses: actions/upload-artifact@v4
+      # - name: Go tests
+      #   uses: dagger/dagger-for-github@v5
       #   with:
-      #     name: binaries
-      #     path: ./bin
+      #     version: $DAGGER_VERSION
+      #     verb: call
+      #     module: github.com/${{ github.repository }}@${{ github.ref }}
+      #     args: tests --dir .
 
-      - name: Build image (linux/amd64)
-        uses: dagger/dagger-for-github@v5
-        with:
-          version: $DAGGER_VERSION
-          verb: call
-          module: github.com/${{ github.repository }}@${{ github.ref }}
-          args: build-image --dir . --platform "linux/amd64" stdout
+      # # - uses: actions/upload-artifact@v4
+      # #   with:
+      # #     name: binaries
+      # #     path: ./bin
 
-      - name: Build image (linux/arm64)
-        uses: dagger/dagger-for-github@v5
-        with:
-          version: $DAGGER_VERSION
-          verb: call
-          module: github.com/${{ github.repository }}@${{ github.ref }}
-          args: build-image --dir . --platform "linux/arm64"
+      # - name: Build image (linux/amd64)
+      #   uses: dagger/dagger-for-github@v5
+      #   with:
+      #     version: $DAGGER_VERSION
+      #     verb: call
+      #     module: github.com/${{ github.repository }}@${{ github.ref }}
+      #     args: build-image --dir . --platform "linux/amd64" stdout
+
+      # - name: Build image (linux/arm64)
+      #   uses: dagger/dagger-for-github@v5
+      #   with:
+      #     version: $DAGGER_VERSION
+      #     verb: call
+      #     module: github.com/${{ github.repository }}@${{ github.ref }}
+      #     args: build-image --dir . --platform "linux/arm64"
