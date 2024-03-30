@@ -3,16 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"runtime"
 
 	platformFormat "github.com/containerd/containerd/platforms"
 )
 
-func (m *GoDagger) DockerBuildImage(ctx context.Context,
-	// sourcer is the directory containing the Go source code
+// DockerBuild packages the Go binary into a Docker container
+func (m *GoDagger) DockerBuild(ctx context.Context,
+	// bin is the directory containing the cross-platform Go binaries
 	// +required
-	source *Directory,
+	bin *Directory,
 	// goVersion is the version of Go to use for building the binary
 	// +optional
 	// +default="1.22.0"
@@ -30,14 +30,7 @@ func (m *GoDagger) DockerBuildImage(ctx context.Context,
 	arch := platformFormat.MustParse(string(platform)).Architecture
 	binaryName := fmt.Sprintf("app_%s_%s", os, arch)
 
-	ctr, err := m.buildBinary(ctx, source, goVersion, platform)
-	if err != nil {
-		return nil, err
-	}
-	file := ctr.File(filepath.Join("/src", binaryName))
-
 	return cli.Container().From("alpine:latest").
-		WithFile("/bin/app", file).
+		WithFile("/bin/app", bin.File(binaryName)).
 		WithEntrypoint([]string{"/bin/app"}), nil
-
 }
