@@ -6,6 +6,7 @@ on:
 
 env:
   DAGGER_VERSION: "0.10.3"
+  # _EXPERIMENTAL_DAGGER_RUNNER_HOST: ${{ secrets._EXPERIMENTAL_DAGGER_RUNNER_HOST }}
   DOCKER_SCOUT_HUB_USER: ${{ vars.DOCKER_SCOUT_HUB_USER }}
   DOCKER_SCOUT_HUB_PASSWORD: ${{ secrets.DOCKER_SCOUT_HUB_PASSWORD }}
 
@@ -21,7 +22,7 @@ jobs:
         with:
           version: $DAGGER_VERSION
           verb: call
-          module: github.com/${{ github.repository }}@${{ github.ref }}
+          module: github.com/felipecruz91/daggerverse/go@7e62a72c84a5e19c58637ee50a22a36dd096f555
           args: build --source . --platforms "linux/amd64,linux/arm64" -o bin
           engine-stop: false
 
@@ -30,7 +31,7 @@ jobs:
         with:
           version: $DAGGER_VERSION
           verb: call
-          module: github.com/${{ github.repository }}@${{ github.ref }}
+          module: github.com/felipecruz91/daggerverse/go@7e62a72c84a5e19c58637ee50a22a36dd096f555
           args: test --source . --verbose=true
           engine-stop: false
 
@@ -39,7 +40,7 @@ jobs:
         with:
           version: $DAGGER_VERSION
           verb: call
-          module: github.com/${{ github.repository }}@${{ github.ref }}
+          module: github.com/felipecruz91/daggerverse/go@7e62a72c84a5e19c58637ee50a22a36dd096f555
           args: docker-build --bin bin --platform "linux/amd64" export --path image-linux-amd64.tar
           engine-stop: false
 
@@ -48,24 +49,6 @@ jobs:
         with:
           version: $DAGGER_VERSION
           verb: call
-          module: github.com/${{ github.repository }}@${{ github.ref }}
+          module: github.com/felipecruz91/daggerverse/go@7e62a72c84a5e19c58637ee50a22a36dd096f555
           args: docker-build --bin bin --platform "linux/arm64" export --path image-linux-arm64.tar
-          engine-stop: false
-
-      - name: Analyze image for CVEs (linux/amd64)
-        uses: dagger/dagger-for-github@v5
-        with:
-          version: $DAGGER_VERSION
-          verb: call
-          module: github.com/${{ github.repository }}@${{ github.ref }}
-          args: docker-scout-cves --source . --docker-scout-hub-user $DOCKER_SCOUT_HUB_USER --docker-scout-hub-password env:DOCKER_SCOUT_HUB_PASSWORD --tarball-path image-linux-amd64.tar --only-severity "high,critical" --exit-code stdout
-          engine-stop: false
-
-      - name: Analyze image for CVEs (linux/arm64)
-        uses: dagger/dagger-for-github@v5
-        with:
-          version: $DAGGER_VERSION
-          verb: call
-          module: github.com/${{ github.repository }}@${{ github.ref }}
-          args: docker-scout-cves --source . --docker-scout-hub-user $DOCKER_SCOUT_HUB_USER --docker-scout-hub-password env:DOCKER_SCOUT_HUB_PASSWORD --tarball-path image-linux-arm64.tar --only-severity "high,critical" --exit-code stdout
           engine-stop: true
