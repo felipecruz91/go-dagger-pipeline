@@ -7,6 +7,7 @@ on:
 env:
   DAGGER_VERSION: "0.10.3"
   DOCKER_SCOUT_HUB_USER: ${{ vars.DOCKER_SCOUT_HUB_USER }}
+  DOCKER_SCOUT_HUB_PASSWORD: ${{ secrets.DOCKER_SCOUT_HUB_PASSWORD }}
 
 jobs:
   build:
@@ -57,10 +58,8 @@ jobs:
           version: $DAGGER_VERSION
           verb: call
           module: github.com/${{ github.repository }}@${{ github.ref }}
-          args: docker-scout-cves --source . --docker-scout-hub-user $DOCKER_SCOUT_HUB_USER --docker-scout-hub-password env:$DOCKER_SCOUT_HUB_PASSWORD --tarball-path image-linux-amd64.tar --only-severity "high,critical" --exit-code stdout
+          args: docker-scout-cves --source . --docker-scout-hub-user $DOCKER_SCOUT_HUB_USER --docker-scout-hub-password env:DOCKER_SCOUT_HUB_PASSWORD --tarball-path image-linux-amd64.tar --only-severity "high,critical" --exit-code stdout
           engine-stop: false
-        env:
-          DOCKER_SCOUT_HUB_PASSWORD: ${{ secrets.DOCKER_SCOUT_HUB_PASSWORD }}
 
       - name: Analyze image for CVEs (linux/arm64)
         uses: dagger/dagger-for-github@v5
@@ -68,7 +67,5 @@ jobs:
           version: $DAGGER_VERSION
           verb: call
           module: github.com/${{ github.repository }}@${{ github.ref }}
-          args: docker-scout-cves --source . --docker-scout-hub-user $DOCKER_SCOUT_HUB_USER --docker-scout-hub-password env:$DOCKER_SCOUT_HUB_PASSWORD --tarball-path image-linux-arm64.tar --only-severity "high,critical" --exit-code stdout
+          args: docker-scout-cves --source . --docker-scout-hub-user $DOCKER_SCOUT_HUB_USER --docker-scout-hub-password env:DOCKER_SCOUT_HUB_PASSWORD --tarball-path image-linux-arm64.tar --only-severity "high,critical" --exit-code stdout
           engine-stop: true
-        env:
-          DOCKER_SCOUT_HUB_PASSWORD: ${{ secrets.DOCKER_SCOUT_HUB_PASSWORD }}
