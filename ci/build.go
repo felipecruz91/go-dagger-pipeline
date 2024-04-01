@@ -53,15 +53,21 @@ func (m *GoDagger) buildBinary(ctx context.Context, source *dagger.Directory, go
 
 	return cli.Container().
 		From("golang:"+goVersion).
-		WithDirectory("/src", source).
 		WithWorkdir("/src").
 		WithMountedCache("/go/pkg/mod", m.goModCacheVolume()).
+		// run `go mod download` with only go.mod files (re-run only if mod files have changed)
+		WithDirectory("/src", source, ContainerWithDirectoryOpts{
+			Include: []string{"**/go.mod", "**/go.sum"},
+		}).
+		WithExec([]string{"go", "mod", "download"}).
 		WithEnvVariable("GOMODCACHE", "/go/pkg/mod").
 		WithMountedCache("/go/build-cache", m.goBuildCacheVolume()).
 		WithEnvVariable("GOCACHE", "/go/build-cache").
 		WithEnvVariable("CGO_ENABLED", "0").
 		WithEnvVariable("GOOS", os).
 		WithEnvVariable("GOARCH", arch).
+		// run `go build` with all source
+		WithMountedDirectory("/src", source).
 		WithExec([]string{"go", "build", "-ldflags", "-s -w", "-o", binaryName, "."}).
 		Sync(ctx)
 }
