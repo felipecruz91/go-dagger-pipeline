@@ -41,7 +41,6 @@ func (m *GoDagger) Test(ctx context.Context,
 		verboseFlag = "-v"
 	}
 
-	//TODO: add volume for cache
 	return cli.Container().
 		From("golang:"+goVersion).
 		WithDirectory("/src", source).

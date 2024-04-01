@@ -9,7 +9,8 @@ import (
 	platformFormat "github.com/containerd/containerd/platforms"
 )
 
-func (m *GoDagger) BuildBinaries(ctx context.Context,
+// Build builds the Go binary for the specified go version and platforms
+func (m *GoDagger) Build(ctx context.Context,
 	// source is the directory containing the Go source code
 	// +required
 	source *Directory,
@@ -41,7 +42,7 @@ func (m *GoDagger) BuildBinaries(ctx context.Context,
 	return cli.Directory().WithFiles(".", files), nil
 }
 
-func (m *GoDagger) buildBinary(ctx context.Context, dir *dagger.Directory, goVersion string, platform string) (*Container, error) {
+func (m *GoDagger) buildBinary(ctx context.Context, source *dagger.Directory, goVersion string, platform string) (*Container, error) {
 	fmt.Printf("Building binary for %s...\n", platform)
 
 	os := platformFormat.MustParse(string(platform)).OS
@@ -52,7 +53,7 @@ func (m *GoDagger) buildBinary(ctx context.Context, dir *dagger.Directory, goVer
 
 	return cli.Container().
 		From("golang:"+goVersion).
-		WithDirectory("/src", dir).
+		WithDirectory("/src", source).
 		WithWorkdir("/src").
 		WithMountedCache("/go/pkg/mod", m.goModCacheVolume()).
 		WithEnvVariable("GOMODCACHE", "/go/pkg/mod").

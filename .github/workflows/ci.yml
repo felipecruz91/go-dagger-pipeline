@@ -6,6 +6,8 @@ on:
 
 env:
   DAGGER_VERSION: "0.10.3"
+  DOCKER_SCOUT_HUB_USER: ${{ vars.DOCKER_SCOUT_HUB_USER }}
+  DOCKER_SCOUT_HUB_PASSWORD: ${{ secrets.DOCKER_SCOUT_HUB_PASSWORD }}
 
 jobs:
   build:
@@ -14,39 +16,56 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: CI
+      - name: Go build
         uses: dagger/dagger-for-github@v5
         with:
           version: $DAGGER_VERSION
           verb: call
           module: github.com/${{ github.repository }}@${{ github.ref }}
-          args: ci --source .
+          args: build --source . --platforms "linux/amd64,linux/arm64" -o bin
+          engine-stop: false
 
-      # - name: Go tests
-      #   uses: dagger/dagger-for-github@v5
-      #   with:
-      #     version: $DAGGER_VERSION
-      #     verb: call
-      #     module: github.com/${{ github.repository }}@${{ github.ref }}
-      #     args: tests --dir .
+      - name: Go tests
+        uses: dagger/dagger-for-github@v5
+        with:
+          version: $DAGGER_VERSION
+          verb: call
+          module: github.com/${{ github.repository }}@${{ github.ref }}
+          args: test --source . --verbose=true
+          engine-stop: false
 
-      # # - uses: actions/upload-artifact@v4
-      # #   with:
-      # #     name: binaries
-      # #     path: ./bin
+      - name: Build Docker image (linux/amd64)
+        uses: dagger/dagger-for-github@v5
+        with:
+          version: $DAGGER_VERSION
+          verb: call
+          module: github.com/${{ github.repository }}@${{ github.ref }}
+          args: docker-build --bin bin --platform "linux/amd64" export --path image-linux-amd64.tar
+          engine-stop: false
 
-      # - name: Build image (linux/amd64)
-      #   uses: dagger/dagger-for-github@v5
-      #   with:
-      #     version: $DAGGER_VERSION
-      #     verb: call
-      #     module: github.com/${{ github.repository }}@${{ github.ref }}
-      #     args: build-image --dir . --platform "linux/amd64" stdout
+      - name: Build image (linux/arm64)
+        uses: dagger/dagger-for-github@v5
+        with:
+          version: $DAGGER_VERSION
+          verb: call
+          module: github.com/${{ github.repository }}@${{ github.ref }}
+          args: docker-build --bin bin --platform "linux/arm64" export --path image-linux-arm64.tar
+          engine-stop: false
 
-      # - name: Build image (linux/arm64)
-      #   uses: dagger/dagger-for-github@v5
-      #   with:
-      #     version: $DAGGER_VERSION
-      #     verb: call
-      #     module: github.com/${{ github.repository }}@${{ github.ref }}
-      #     args: build-image --dir . --platform "linux/arm64"
+      - name: Analyze image for CVEs (linux/amd64)
+        uses: dagger/dagger-for-github@v5
+        with:
+          version: $DAGGER_VERSION
+          verb: call
+          module: github.com/${{ github.repository }}@${{ github.ref }}
+          args: docker-scout-cves --source . --docker-scout-hub-user $DOCKER_SCOUT_HUB_USER --docker-scout-hub-password env:DOCKER_SCOUT_HUB_PASSWORD --tarball-path image-linux-amd64.tar --only-severity "high,critical" --exit-code stdout
+          engine-stop: false
+
+      - name: Analyze image for CVEs (linux/arm64)
+        uses: dagger/dagger-for-github@v5
+        with:
+          version: $DAGGER_VERSION
+          verb: call
+          module: github.com/${{ github.repository }}@${{ github.ref }}
+          args: docker-scout-cves --source . --docker-scout-hub-user $DOCKER_SCOUT_HUB_USER --docker-scout-hub-password env:DOCKER_SCOUT_HUB_PASSWORD --tarball-path image-linux-arm64.tar --only-severity "high,critical" --exit-code stdout
+          engine-stop: true
