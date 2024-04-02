@@ -6,9 +6,11 @@ on:
 
 env:
   DAGGER_VERSION: "0.10.3"
-  # _EXPERIMENTAL_DAGGER_RUNNER_HOST: ${{ secrets._EXPERIMENTAL_DAGGER_RUNNER_HOST }}
+  DAGGER_GO_MODULE: "github.com/felipecruz91/daggerverse/go@7e62a72c84a5e19c58637ee50a22a36dd096f555"
+  DAGGER_DOCKER_SCOUT_MODULE: "github.com/felipecruz91/daggerverse/scout@f136208bba7f378d959a81ec49d10f3ac4ab745b"
   DOCKER_SCOUT_HUB_USER: ${{ vars.DOCKER_SCOUT_HUB_USER }}
   DOCKER_SCOUT_HUB_PASSWORD: ${{ secrets.DOCKER_SCOUT_HUB_PASSWORD }}
+  # _EXPERIMENTAL_DAGGER_RUNNER_HOST: ${{ secrets._EXPERIMENTAL_DAGGER_RUNNER_HOST }}
 
 jobs:
   build:
@@ -17,38 +19,37 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Install Dagger CLI
+        run: |
+          cd /usr/local && { curl -L https://dl.dagger.io/dagger/install.sh | DAGGER_VERSION=$DAGGER_VERSION sh; cd -; }
+          dagger version
+
       - name: Go build
-        uses: dagger/dagger-for-github@v5
-        with:
-          version: $DAGGER_VERSION
-          verb: call
-          module: github.com/felipecruz91/daggerverse/go@7e62a72c84a5e19c58637ee50a22a36dd096f555
-          args: build --source . --platforms "linux/amd64,linux/arm64" -o bin
-          engine-stop: false
+        run: |
+          dagger call -m "$DAGGER_GO_MODULE" build --source . --platforms "linux/amd64,linux/arm64" -o bin
 
       - name: Go tests
-        uses: dagger/dagger-for-github@v5
-        with:
-          version: $DAGGER_VERSION
-          verb: call
-          module: github.com/felipecruz91/daggerverse/go@7e62a72c84a5e19c58637ee50a22a36dd096f555
-          args: test --source . --verbose=true
-          engine-stop: false
+        run: |
+          dagger call -m "$DAGGER_GO_MODULE" test --source . --verbose=true
 
       - name: Build Docker image (linux/amd64)
-        uses: dagger/dagger-for-github@v5
-        with:
-          version: $DAGGER_VERSION
-          verb: call
-          module: github.com/felipecruz91/daggerverse/go@7e62a72c84a5e19c58637ee50a22a36dd096f555
-          args: docker-build --bin bin --platform "linux/amd64" export --path image-linux-amd64.tar
-          engine-stop: false
+        run: |
+          dagger call -m "$DAGGER_GO_MODULE" docker-build --bin bin --platform "linux/amd64" export --path image-linux-amd64.tar
 
       - name: Build image (linux/arm64)
-        uses: dagger/dagger-for-github@v5
-        with:
-          version: $DAGGER_VERSION
-          verb: call
-          module: github.com/felipecruz91/daggerverse/go@7e62a72c84a5e19c58637ee50a22a36dd096f555
-          args: docker-build --bin bin --platform "linux/arm64" export --path image-linux-arm64.tar
-          engine-stop: true
+        run: |
+          dagger call -m "$DAGGER_GO_MODULE" docker-build --bin bin --platform "linux/arm64" export --path image-linux-arm64.tar
+
+      - name: Analyze image for CVEs (linux/amd64)
+        run: |
+          dagger call -m "$DAGGER_DOCKER_SCOUT_MODULE" docker-scout-cves --source . --docker-scout-hub-user $DOCKER_SCOUT_HUB_USER --docker-scout-hub-password env:DOCKER_SCOUT_HUB_PASSWORD --tarball-path image-linux-amd64.tar --only-severity "high,critical" --exit-code stdout
+
+      - name: Analyze image for CVEs (linux/arm64)
+        run: |
+          dagger call -m "$DAGGER_DOCKER_SCOUT_MODULE" docker-scout-cves --source . --docker-scout-hub-user $DOCKER_SCOUT_HUB_USER --docker-scout-hub-password env:DOCKER_SCOUT_HUB_PASSWORD --tarball-path image-linux-arm64.tar --only-severity "high,critical" --exit-code stdout
+
+      # For ephemeral runners only and if using Dagger Cloud:
+      # You may need to increase the timeout so the Dagger Engine has enough time to push cache data to Dagger Cloud
+      - name: Stop Dagger engine
+        run: docker stop -t 300 $(docker ps --filter name="dagger-engine-*" -q)
+        if: always()
