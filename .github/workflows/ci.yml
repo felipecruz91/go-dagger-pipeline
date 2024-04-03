@@ -13,6 +13,7 @@ env:
   SHA: ${{ github.event.pull_request.head.sha || github.event.after }}
   DOCKER_SCOUT_HUB_USER: ${{ vars.DOCKER_SCOUT_HUB_USER }}
   DOCKER_SCOUT_HUB_PASSWORD: ${{ secrets.DOCKER_SCOUT_HUB_PASSWORD }}
+  # _EXPERIMENTAL_DAGGER_CACHE_CONFIG: "type=gha,mode=max,url=$ACTIONS_CACHE_URL,token=$ACTIONS_RUNTIME_TOKEN"
   # _EXPERIMENTAL_DAGGER_RUNNER_HOST: ${{ secrets._EXPERIMENTAL_DAGGER_RUNNER_HOST }}
 
 jobs:
@@ -21,7 +22,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set env
-        run: echo SHA8=${SHA::8} >> $GITHUB_ENV
+        run: |
+          echo SHA8=${SHA::8} >> $GITHUB_ENV
+      - name: Expose GitHub Runtime
+        uses: crazy-max/ghaction-github-runtime@v3
+
+      - name: Env
+        run: |
+          # ACTIONS_RUNTIME_TOKEN, ACTIONS_RUNTIME_URL should be exposed
+          env|sort
 
       - uses: actions/checkout@v3
 
@@ -32,35 +41,35 @@ jobs:
 
       - name: Go build
         run: |
-          dagger call -m "$DAGGER_GO_MODULE" build --source . --platforms "linux/amd64,linux/arm64" -o bin
+          _EXPERIMENTAL_DAGGER_CACHE_CONFIG="type=gha,mode=max,url=$ACTIONS_CACHE_URL,token=$ACTIONS_RUNTIME_TOKEN" dagger call --debug -m "$DAGGER_GO_MODULE" build --source . --platforms "linux/amd64,linux/arm64" -o bin
 
       - name: Go lint
         run: |
-          dagger call -m "$DAGGER_GO_MODULE" lint --source . --verbose=true
+          _EXPERIMENTAL_DAGGER_CACHE_CONFIG="type=gha,mode=max,url=$ACTIONS_CACHE_URL,token=$ACTIONS_RUNTIME_TOKEN" dagger call --debug -m "$DAGGER_GO_MODULE" lint --source . --verbose=true
 
       - name: Go tests
         run: |
-          dagger call -m "$DAGGER_GO_MODULE" test --source . --verbose=true
+          _EXPERIMENTAL_DAGGER_CACHE_CONFIG="type=gha,mode=max,url=$ACTIONS_CACHE_URL,token=$ACTIONS_RUNTIME_TOKEN" dagger call --debug -m "$DAGGER_GO_MODULE" test --source . --verbose=true
 
       - name: Build image (linux/amd64)
         run: |
-          dagger call -m "$DAGGER_GO_MODULE" docker-build --bin bin --platform "linux/amd64" export --path image-linux-amd64.tar
+          _EXPERIMENTAL_DAGGER_CACHE_CONFIG="type=gha,mode=max,url=$ACTIONS_CACHE_URL,token=$ACTIONS_RUNTIME_TOKEN" dagger call --debug -m "$DAGGER_GO_MODULE" docker-build --bin bin --platform "linux/amd64" export --path image-linux-amd64.tar
 
       - name: Build image (linux/arm64)
         run: |
-          dagger call -m "$DAGGER_GO_MODULE" docker-build --bin bin --platform "linux/arm64" export --path image-linux-arm64.tar
+          _EXPERIMENTAL_DAGGER_CACHE_CONFIG="type=gha,mode=max,url=$ACTIONS_CACHE_URL,token=$ACTIONS_RUNTIME_TOKEN" dagger call --debug -m "$DAGGER_GO_MODULE" docker-build --bin bin --platform "linux/arm64" export --path image-linux-arm64.tar
 
       - name: Analyze image for CVEs (linux/amd64)
         run: |
-          dagger call -m "$DAGGER_DOCKER_SCOUT_MODULE" docker-scout-cves --source . --docker-scout-hub-user $DOCKER_SCOUT_HUB_USER --docker-scout-hub-password env:DOCKER_SCOUT_HUB_PASSWORD --tarball-path image-linux-amd64.tar --only-severity "high,critical" --exit-code stdout
+          _EXPERIMENTAL_DAGGER_CACHE_CONFIG="type=gha,mode=max,url=$ACTIONS_CACHE_URL,token=$ACTIONS_RUNTIME_TOKEN" dagger call --debug -m "$DAGGER_DOCKER_SCOUT_MODULE" docker-scout-cves --source . --docker-scout-hub-user $DOCKER_SCOUT_HUB_USER --docker-scout-hub-password env:DOCKER_SCOUT_HUB_PASSWORD --tarball-path image-linux-amd64.tar --only-severity "high,critical" --exit-code stdout
 
       - name: Analyze image for CVEs (linux/arm64)
         run: |
-          dagger call -m "$DAGGER_DOCKER_SCOUT_MODULE" docker-scout-cves --source . --docker-scout-hub-user $DOCKER_SCOUT_HUB_USER --docker-scout-hub-password env:DOCKER_SCOUT_HUB_PASSWORD --tarball-path image-linux-arm64.tar --only-severity "high,critical" --exit-code stdout
+          _EXPERIMENTAL_DAGGER_CACHE_CONFIG="type=gha,mode=max,url=$ACTIONS_CACHE_URL,token=$ACTIONS_RUNTIME_TOKEN" dagger call --debug -m "$DAGGER_DOCKER_SCOUT_MODULE" docker-scout-cves --source . --docker-scout-hub-user $DOCKER_SCOUT_HUB_USER --docker-scout-hub-password env:DOCKER_SCOUT_HUB_PASSWORD --tarball-path image-linux-arm64.tar --only-severity "high,critical" --exit-code stdout
 
       - name: Push multi-arch image
         run: |
-          dagger call -m "$DAGGER_GO_MODULE" docker-push --bin bin --image $DOCKER_SCOUT_HUB_USER/$IMAGE_MAME:$SHA8 --platforms "linux/amd64,linux/arm64" --registry-address $REGISTRY --registry-user $DOCKER_SCOUT_HUB_USER --registry-password env:DOCKER_SCOUT_HUB_PASSWORD
+          _EXPERIMENTAL_DAGGER_CACHE_CONFIG="type=gha,mode=max,url=$ACTIONS_CACHE_URL,token=$ACTIONS_RUNTIME_TOKEN" dagger call --debug -m "$DAGGER_GO_MODULE" docker-push --bin bin --image $DOCKER_SCOUT_HUB_USER/$IMAGE_MAME:$SHA8 --platforms "linux/amd64,linux/arm64" --registry-address $REGISTRY --registry-user $DOCKER_SCOUT_HUB_USER --registry-password env:DOCKER_SCOUT_HUB_PASSWORD
 
       # For ephemeral runners only and if using Dagger Cloud:
       # You may need to increase the timeout so the Dagger Engine has enough time to push cache data to Dagger Cloud
