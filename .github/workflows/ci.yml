@@ -6,8 +6,11 @@ on:
 
 env:
   DAGGER_VERSION: "0.10.3"
-  DAGGER_GO_MODULE: "github.com/felipecruz91/daggerverse/go@19f96a0cb541100a73ce024280e50305608a1e60"
+  DAGGER_GO_MODULE: "github.com/felipecruz91/daggerverse/go@12b847cf74dde253bc3a541cff07f6cb08049a79"
   DAGGER_DOCKER_SCOUT_MODULE: "github.com/felipecruz91/daggerverse/scout@f136208bba7f378d959a81ec49d10f3ac4ab745b"
+  REGISTRY: "docker.io"
+  IMAGE_MAME: ${{ github.event.repository.name }}
+  SHA: ${{ github.event.pull_request.head.sha || github.event.after }}
   DOCKER_SCOUT_HUB_USER: ${{ vars.DOCKER_SCOUT_HUB_USER }}
   DOCKER_SCOUT_HUB_PASSWORD: ${{ secrets.DOCKER_SCOUT_HUB_PASSWORD }}
   # _EXPERIMENTAL_DAGGER_RUNNER_HOST: ${{ secrets._EXPERIMENTAL_DAGGER_RUNNER_HOST }}
@@ -17,6 +20,9 @@ jobs:
     name: ci
     runs-on: ubuntu-latest
     steps:
+      - name: Set env
+        run: echo SHA8=${SHA::8} >> $GITHUB_ENV
+
       - uses: actions/checkout@v3
 
       - name: Install Dagger CLI
@@ -51,6 +57,10 @@ jobs:
       - name: Analyze image for CVEs (linux/arm64)
         run: |
           dagger call -m "$DAGGER_DOCKER_SCOUT_MODULE" docker-scout-cves --source . --docker-scout-hub-user $DOCKER_SCOUT_HUB_USER --docker-scout-hub-password env:DOCKER_SCOUT_HUB_PASSWORD --tarball-path image-linux-arm64.tar --only-severity "high,critical" --exit-code stdout
+
+      - name: Push multi-arch image
+        run: |
+          dagger call -m "$DAGGER_GO_MODULE" docker-push --bin bin --image $DOCKER_SCOUT_HUB_USER/$IMAGE_MAME:$SHA8 --platforms "linux/amd64,linux/arm64" --registry-address $REGISTRY --registry-user $DOCKER_SCOUT_HUB_USER --registry-password env:DOCKER_SCOUT_HUB_PASSWORD
 
       # For ephemeral runners only and if using Dagger Cloud:
       # You may need to increase the timeout so the Dagger Engine has enough time to push cache data to Dagger Cloud
